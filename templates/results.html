@@ -1,0 +1,29 @@
+<!-- templates/results.html -->
+{% extends "base.html" %}
+{% block title %}Your Thumbnails{% endblock %}
+{% block content %}
+<div class="container">
+    <h1>✅ Your Thumbnails</h1>
+    <p>
+        {% if video_source_type == 'upload' %}
+            From uploaded file: <strong>{{ video_url }}</strong>
+        {% else %}
+            From YouTube: <a href="{{ video_url }}" target="_blank" rel="noopener">{{ video_url }}</a>
+        {% endif %}
+    </p>
+    <div class="thumbnails-grid">
+        {% for thumb in thumbnails %}
+        <div class="thumbnail-card">
+            <img src="{{ url_for('thumbnail', job_id=job_id, filename=thumb) }}"
+                 alt="Thumbnail {{ loop.index }}">
+            <a href="{{ url_for('thumbnail', job_id=job_id, filename=thumb) }}"
+               download class="download-link">Download</a>
+        </div>
+        {% endfor %}
+    </div>
+    <div class="actions">
+        <a href="{{ url_for('download_zip', job_id=job_id) }}" class="btn">📦 Download All (ZIP)</a>
+        <a href="/" class="btn btn-outline">🔄 Generate More</a>
+    </div>
+</div>
+{% endblock %}

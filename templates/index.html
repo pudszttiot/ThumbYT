@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+{% block title %}Home - Video Thumbnail Generator{% endblock %}
+{% block content %}
+<div class="container">
+    <h1>🎬 Generate Video Thumbnails</h1>
+    <p>Paste a YouTube URL <strong>or</strong> upload your own video file. Choose number of frames and optional time range.</p>
+    
+    <form id="process-form" enctype="multipart/form-data">
+        <div class="form-grid">
+            <!-- YouTube URL input -->
+            <input type="url" id="youtube-url" name="url" 
+                   placeholder="https://www.youtube.com/watch?v=..." autocomplete="off">
+            
+            <!-- REPLACED "— OR —" with image -->
+            <div class="or-divider">
+                <img src="{{ url_for('static', filename='images/or-divider.jpg') }}"
+                     alt="or"
+                     class="or-image">
+            </div>
+            
+            <!-- File upload input - CENTERED -->
+            <div class="file-upload-wrapper">
+                <label for="video-file" class="file-label">📁 Choose video file</label>
+                <input type="file" id="video-file" name="video_file" accept="video/*" style="display:none">
+                <span id="file-name" class="file-name-display">No file chosen</span>
+            </div>
+            
+            <div class="input-group">
+                <label for="num_thumbnails">Number of thumbnails:</label>
+                <input type="number" id="num_thumbnails" name="num_thumbnails" 
+                       min="1" max="20" value="10" required>
+            </div>
+            
+            <div class="time-range">
+                <div class="input-group">
+                    <label for="start_time">Start time (MM:SS or HH:MM:SS):</label>
+                    <input type="text" id="start_time" name="start_time" placeholder="0:00">
+                </div>
+                <div class="input-group">
+                    <label for="end_time">End time (optional):</label>
+                    <input type="text" id="end_time" name="end_time" placeholder="video end">
+                </div>
+            </div>
+        </div>
+        <button type="submit" id="submit-btn">✨ Generate Thumbnails</button>
+    </form>
+
+    <div id="progress-container" class="hidden">
+        <div class="progress-bar">
+            <div id="progress-fill" class="progress-fill"></div>
+        </div>
+        <p id="progress-message">Starting...</p>
+    </div>
+    <div id="error-message" class="error hidden"></div>
+</div>
+
+<script>
+    const form = document.getElementById('process-form');
+    const progressContainer = document.getElementById('progress-container');
+    const progressFill = document.getElementById('progress-fill');
+    const progressMessage = document.getElementById('progress-message');
+    const errorDiv = document.getElementById('error-message');
+    const submitBtn = document.getElementById('submit-btn');
+    const fileInput = document.getElementById('video-file');
+    const fileNameSpan = document.getElementById('file-name');
+
+    // Display selected file name
+    fileInput.addEventListener('change', function(e) {
+        if (this.files.length > 0) {
+            fileNameSpan.textContent = this.files[0].name;
+        } else {
+            fileNameSpan.textContent = 'No file chosen';
+        }
+    });
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const url = document.getElementById('youtube-url').value.trim();
+        const file = fileInput.files[0];
+        const num = document.getElementById('num_thumbnails').value;
+        const start = document.getElementById('start_time').value;
+        const end = document.getElementById('end_time').value;
+
+        // Validate: either URL or file must be provided
+        if (!url && !file) {
+            showError('Please provide a YouTube URL or select a video file');
+            return;
+        }
+        if (url && file) {
+            showError('Please provide either a YouTube URL OR a file, not both');
+            return;
+        }
+
+        errorDiv.classList.add('hidden');
+        progressContainer.classList.remove('hidden');
+        submitBtn.disabled = true;
+
+        const formData = new FormData();
+        formData.append('num_thumbnails', num);
+        formData.append('start_time', start);
+        formData.append('end_time', end);
+        
+        if (file) {
+            formData.append('video_file', file);
+        } else {
+            formData.append('url', url);
+        }
+
+        try {
+            const response = await fetch('/process', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+            if (data.error) throw new Error(data.error);
+            pollProgress(data.job_id);
+        } catch (err) {
+            showError(err.message);
+            progressContainer.classList.add('hidden');
+            submitBtn.disabled = false;
+        }
+    });
+
+    function pollProgress(jobId) {
+        const interval = setInterval(async () => {
+            try {
+                const resp = await fetch(`/progress/${jobId}`);
+                const job = await resp.json();
+                if (job.error) {
+                    clearInterval(interval);
+                    showError(job.error);
+                    progressContainer.classList.add('hidden');
+                    submitBtn.disabled = false;
+                    return;
+                }
+                progressFill.style.width = (job.progress || 0) + '%';
+                progressMessage.textContent = job.message;
+                if (job.status === 'done') {
+                    clearInterval(interval);
+                    window.location.href = `/results/${jobId}`;
+                } else if (job.status === 'error') {
+                    clearInterval(interval);
+                    showError(job.error || 'Unknown error');
+                    progressContainer.classList.add('hidden');
+                    submitBtn.disabled = false;
+                }
+            } catch (err) {
+                clearInterval(interval);
+                showError('Connection lost');
+                progressContainer.classList.add('hidden');
+                submitBtn.disabled = false;
+            }
+        }, 1000);
+    }
+
+    function showError(msg) {
+        errorDiv.textContent = '❌ ' + msg;
+        errorDiv.classList.remove('hidden');
+    }
+</script>
+
+<style>
+    /* Centered file upload */
+    .file-upload-wrapper {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        width: 100%;
+    }
+
+    .file-label {
+        background: #007bff;
+        color: white;
+        padding: 8px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        display: inline-block;
+    }
+    .file-label:hover {
+        background: #0056b3;
+    }
+    .file-name-display {
+        font-size: 0.9rem;
+        color: #555;
+        font-style: italic;
+    }
+
+    /* Style for the OR image */
+    .or-divider {
+        text-align: center;
+        margin: 10px 0;
+        width: 100%;
+    }
+    .or-image {
+        max-width: 80px;      /* adjust as needed */
+        height: auto;
+        display: inline-block;
+    }
+
+    @media (max-width: 600px) {
+        .file-upload-wrapper {
+            flex-direction: column;
+            align-items: center;
+        }
+    }
+</style>
+{% endblock %}
