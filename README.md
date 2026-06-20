@@ -35,7 +35,7 @@ ThumbYT is a lightweight Flask web application that automatically generates high
 
 <p align="center"> 
   &nbsp;
-<img width="400" height="650" src="https://raw.githubusercontent.com/pudszttiot/ThumbYT/refs/heads/main/static/images/ThumbYT_Screenshot.jpg" border="0">
+<img width="400" height="750" src="https://raw.githubusercontent.com/pudszttiot/ThumbYT/refs/heads/main/static/images/ThumbYT_Screenshot.jpg" border="0">
   <img width="400" height="500" src="[SCREENSHOT_2_URL]" border="0">
   <br><br>
   <img width="400" height="600" src="[DEMO_GIF_URL]" border="0">
